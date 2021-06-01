@@ -1,0 +1,37 @@
+<div *ngIf ="this.cachePlayers.length===2">
+    <button (click)="start()">Game Start Or Restart Game</button>
+</div>
+<!-- 
+<button (click)="checkSocketHandler($event)">CheckSocket</button> -->
+<div>
+    <button *ngIf="!this.checkUser(this.currentUser)"(click)="join()">Join Game</button>
+    <button *ngIf="this.checkUser(this.currentUser) && this.playerInTurn===''"(click)="unjoin()">Unjoin Game</button>
+
+</div>
+
+<div *ngIf="this.cachePlayers.length>0">
+    <div>Players in Game</div>
+    <div *ngFor="let player of this.cachePlayers">
+        <div>{{player.user}} - {{player.sign}}</div>
+    </div>
+</div>
+<div *ngIf="this.playerInTurn!==''">{{this.playerInTurn}}'s turn </div>
+<h3 *ngIf="this.winner!==''">{{this.winner}} wins!</h3>
+<div class="board">
+    <div class="row">
+        <div class="col" (click)="move(0)">{{this.board[0]}}</div>
+        <div class="col" (click)="move(1)">{{this.board[1]}}</div>
+        <div class="col" (click)="move(2)">{{this.board[2]}}</div>
+    </div>
+    <div class="row">
+        <div class="col" (click)="move(3)">{{this.board[3]}}</div>
+        <div class="col" (click)="move(4)">{{this.board[4]}}</div>
+        <div class="col" (click)="move(5)">{{this.board[5]}}</div>
+    </div>
+    <div class="row">
+        <div class="col" (click)="move(6)">{{this.board[6]}}</div>
+        <div class="col" (click)="move(7)">{{this.board[7]}}</div>
+        <div class="col" (click)="move(8)">{{this.board[8]}}</div>
+    </div>
+
+</div>

@@ -1,0 +1,18 @@
+*{
+    text-align: center;
+}
+.board{
+    width: 300px;
+    margin:auto;
+    display:grid;
+}
+.col{
+    border:green solid 2px;
+    height:100px;
+    width:100px;
+    margin:auto;
+    background-color:aqua;
+    font-size:80px;
+    text-align: center;
+
+}
