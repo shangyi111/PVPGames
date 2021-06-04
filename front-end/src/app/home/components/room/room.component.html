@@ -1,0 +1,27 @@
+<!-- <div>
+    <ul class="list-group">
+        <li class="list-item">Available Rooms</li>
+        <li *ngFor="let room of this.availRooms">
+            <span>{{room.roomId}}</span>
+            <span>{{room.userCounts}}</span>
+            <span class="">Join</span>
+        </li>
+    </ul>
+    <form #joinRoomForm="ngForm" (ngSubmit)="enterRoom(joinRoomForm)">
+        <div class="mb-3">
+          <label for="inputRoom" class="form-label">Enter Room Number</label>
+          <input ngModel  
+                 type="text" 
+                 name = "roomId" 
+                 required 
+                 #roomId="ngModel"
+                 class="form-control col-lg-2 mx-auto" 
+                 id="inputRoom">
+        </div>
+        <p>{{roomId.value}}</p>
+        <div class="alert alert-danger" role="alert" *ngIf= "roomId.pristine && roomId.touched">
+            Please enter your roomId.
+        </div>
+        <button type="submit" class="btn btn-primary">Join Room</button>
+    </form>
+</div> -->

@@ -1,37 +1,109 @@
-<div *ngIf ="this.cachePlayers.length===2">
-    <button (click)="start()">Game Start Or Restart Game</button>
+<div [hidden]="this.isInRoom" id="joinRoom" >
+    
+    <form #joinRoomForm="ngForm" 
+        (ngSubmit)="enterRoom(joinRoomForm.value.roomId)"
+        style="padding: 40px;">
+        <div class="mb-3">
+        <label for="inputRoom" class="form-label">Enter Room Number</label>
+        <input ngModel  
+                type="text" 
+                name = "roomId" 
+                required 
+                #roomId="ngModel"
+                class="form-control col-lg-2 mx-auto" 
+                id="inputRoom">
+        </div>
+        <p>{{roomId.value}}</p>
+        <div class="alert alert-danger" role="alert" *ngIf= "roomId.pristine && roomId.touched">
+            Please enter your roomId.
+        </div>
+        <button [disabled]="roomId.pristine" type="submit" class="btn btn-primary">Join Room</button>
+    </form>
+    
+    <div class="row d-flex justify-content-center">
+        <table *ngIf="this.roomsMap!==undefined && this.roomsList.length>0 " 
+            class="table-lg table-hover">
+         <!-- <caption>List of Rooms In Use</caption> -->
+         <thead>
+           <tr>
+             <th scope="col-3">Room Id</th>
+             <th scope="col-3">User Count</th>
+             <th scope="col-3"></th>
+           </tr>
+         </thead>
+         <tbody>
+           <tr *ngFor="for let room of this.roomsList">
+                <th scope="row">{{room}}</th>
+                <td>{{this.roomsMap[room].length}}</td>
+                <td><button class="btn btn-light" (click)="enterRoom(room)">Join</button></td>
+           </tr>
+         </tbody>
+     </table>
+    </div>  
 </div>
-<!-- 
-<button (click)="checkSocketHandler($event)">CheckSocket</button> -->
-<div>
-    <button *ngIf="!this.checkUser(this.currentUser)"(click)="join()">Join Game</button>
-    <button *ngIf="this.checkUser(this.currentUser) && this.playerInTurn===''"(click)="unjoin()">Unjoin Game</button>
 
+<div class="container " [hidden]="!this.isInRoom">
+    <div class="row">
+        <div class="col-3 list-group">
+            <button class="list-group-item list-group-item-action active" (click)="leaveRoom()">Leave Room</button>
+            <li class="list-group-item list-group-item-info">Users In Room</li>
+            <li class="list-group-item"*ngFor = "let user of this.usersByRoomId">
+                {{user}}
+            </li>
+            <li class="list-group-item list-group-item-info">Room Anouncements:</li>
+            <li class="list-group-item" *ngFor="let msg of this.msgs; let i = index;">
+                <div  style="font-weight: bold;"  class="fadeIn"*ngIf="i===0;else otherMsgs">
+                    {{msg}}
+                </div>
+                <ng-template #otherMsgs>
+                    {{msg}} 
+                </ng-template>
+                
+            </li>    
+        </div>
+        <div class = "col-8 list-group">
+                <div *ngIf ="this.cachePlayers.length===2 && this.playerInTurn==='' && this.checkUser(this.currentUser)">
+                    <button (click)="start()" class="btn btn-primary">Restart</button>
+                </div>
+                <div style="padding: 10px;">
+                    <button *ngIf="!this.checkUser(this.currentUser) && this.cachePlayers.length<2"(click)="join()" class="btn btn-primary">Join Game</button>
+                    <button *ngIf="this.checkUser(this.currentUser) && this.playerInTurn===''"(click)="unjoin() "class="btn btn-primary">Leave Game</button>  
+                </div>
+            
+            
+            <div *ngIf="this.cachePlayers.length>0">
+                <li class="list-group-item list-group-item-info">Players in Game</li>
+                <li class="list-group-item" *ngFor="let player of this.cachePlayers">
+                    {{player.user}} - {{player.sign}}
+                </li>
+            </div>
+            <div *ngIf="this.checkUser(this.currentUser)">
+                <li class="list-group-item list-group-item-info" *ngIf="this.playerInTurn===this.currentUser">Your turn </li>
+                <li class="list-group-item list-group-item-info" *ngIf="this.playerInTurn!=='' && this.playerInTurn!==this.currentUser">Your opponent's turn </li>
+                <li class="list-group-item list-group-item-danger" *ngIf="this.winner!==''&& this.winner!==this.currentUser && this.winner!=='No one '">You lost!</li>
+                <li class="list-group-item list-group-item-success" *ngIf="this.winner!==''&& this.winner===this.currentUser">You won!</li>
+                <li class="list-group-item list-group-item-danger" *ngIf="this.winner!==''&& this.winner==='No one '">Tie</li>
+            </div>
+            
+            <div class="board">
+                <div class="row">
+                    <div class="col" (click)="move(0)">{{this.board[0]}}</div>
+                    <div class="col" (click)="move(1)">{{this.board[1]}}</div>
+                    <div class="col" (click)="move(2)">{{this.board[2]}}</div>
+                </div>
+                <div class="row">
+                    <div class="col" (click)="move(3)">{{this.board[3]}}</div>
+                    <div class="col" (click)="move(4)">{{this.board[4]}}</div>
+                    <div class="col" (click)="move(5)">{{this.board[5]}}</div>
+                </div>
+                <div class="row">
+                    <div class="col" (click)="move(6)">{{this.board[6]}}</div>
+                    <div class="col" (click)="move(7)">{{this.board[7]}}</div>
+                    <div class="col" (click)="move(8)">{{this.board[8]}}</div>
+                </div>
+            
+            </div>
+        </div>
+    </div>
 </div>
 
-<div *ngIf="this.cachePlayers.length>0">
-    <div>Players in Game</div>
-    <div *ngFor="let player of this.cachePlayers">
-        <div>{{player.user}} - {{player.sign}}</div>
-    </div>
-</div>
-<div *ngIf="this.playerInTurn!==''">{{this.playerInTurn}}'s turn </div>
-<h3 *ngIf="this.winner!==''">{{this.winner}} wins!</h3>
-<div class="board">
-    <div class="row">
-        <div class="col" (click)="move(0)">{{this.board[0]}}</div>
-        <div class="col" (click)="move(1)">{{this.board[1]}}</div>
-        <div class="col" (click)="move(2)">{{this.board[2]}}</div>
-    </div>
-    <div class="row">
-        <div class="col" (click)="move(3)">{{this.board[3]}}</div>
-        <div class="col" (click)="move(4)">{{this.board[4]}}</div>
-        <div class="col" (click)="move(5)">{{this.board[5]}}</div>
-    </div>
-    <div class="row">
-        <div class="col" (click)="move(6)">{{this.board[6]}}</div>
-        <div class="col" (click)="move(7)">{{this.board[7]}}</div>
-        <div class="col" (click)="move(8)">{{this.board[8]}}</div>
-    </div>
-
-</div>

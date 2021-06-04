@@ -5,14 +5,41 @@
     width: 300px;
     margin:auto;
     display:grid;
+    
 }
-.col{
+.board .col{
     border:green solid 2px;
     height:100px;
     width:100px;
     margin:auto;
-    background-color:aqua;
     font-size:80px;
     text-align: center;
 
 }
+.fadeIn {
+    animation: fadeIn linear .5s;
+    -webkit-animation: fadeIn linear .5s;
+    -moz-animation: fadeIn linear .5s;
+    -o-animation: fadeIn linear .5s;
+    -ms-animation: fadeIn linear .5s;
+  }
+  
+  @keyframes fadeIn {
+    0% {opacity:0;}
+    100% {opacity:1;}
+  }
+  
+  @-moz-keyframes fadeIn {
+    0% {opacity:0;}
+    100% {opacity:1;}
+  }
+  
+  @-webkit-keyframes fadeIn {
+    0% {opacity:0;}
+    100% {opacity:1;}
+  }
+  
+  @-o-keyframes fadeIn {
+    0% {opacity:0;}
+    100% {opacity:1;}
+  }

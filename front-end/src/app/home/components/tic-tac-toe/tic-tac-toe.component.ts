@@ -1,4 +1,7 @@
 import { Component } from '@angular/core';
+import { NgForm } from '@angular/forms';
+import { Router } from '@angular/router';
+import { Observable } from 'rxjs';
 import { ApiService } from 'src/app/services/api.service';
 import { AuthService } from 'src/app/services/auth.service';
 import { WebSocketService } from 'src/app/services/web-socket.service';
@@ -10,39 +13,40 @@ import { WebSocketService } from 'src/app/services/web-socket.service';
   styleUrls: ['./tic-tac-toe.component.scss']
 })
 export class TicTacToeComponent{
-  msg:string;
+  
+  msgs:any[]=[];
   currentUser:string;
   //updatePlayersList
   cachePlayers: any [] = [];
   //updateBoard
-  playerInTurn:any;
-  board:any; 
+  playerInTurn:any = "";
+  board:any = [0,0,0,0,0,0,0,0,0]; 
   rows:any = [0,0,0];
   cols:any = [0,0,0];
   diag:number = 0;
   antiDiag:number = 0;
   //updateWinner
   winner:string="";
-  
+  //updateRoom
+  roomId: any ;
+  isInRoom:boolean=false;
+  usersByRoomId:any []=[];
+  roomsMap:any=undefined;
+  roomsList:any[]=[];
+
 
   constructor(private webSocketService:WebSocketService,
+              private apiService:ApiService,
               private authService:AuthService){
     this.currentUser = this.authService.getUserDataFromLocalStorage('userData').username;
-    this.refreshBoard();
-    this.refreshWinner();
-
+  
   }
   ngOnInit() {
-    this.webSocketService
-        .listen('test event')
-        .subscribe(msg => {
-          console.log(msg);
-          this.msg = "1st "+msg;
-        });
+    this.getRooms();
     this.webSocketService
         .listen('updatePlayerList')
-        .subscribe((data:any[]) => {
-          this.cachePlayers = data;
+        .subscribe((data:any) => {
+          this.cachePlayers = data.cachePlayers;
         });
     this.webSocketService
         .listen('updateBoard')
@@ -53,15 +57,65 @@ export class TicTacToeComponent{
           this.diag = data.diag;
           this.rows = data.rows;
           this.cols = data.cols;
-          console.log(this.board)
         });
     this.webSocketService
         .listen('updateWinner')
         .subscribe((data:any) => {
-          this.winner = data;
+          this.winner = data.winner;
+        });
+    this.webSocketService
+        .listen('updateRoom')//boardcast to only certain rooms
+        .subscribe((data:any) => {
+          this.usersByRoomId = data.usersByRoomId;
+          this.msgs = data.msgs;
+        });
+      this.webSocketService
+        .listen('updateRoomsDb')//boardcast to all rooms
+        .subscribe((data:any) => {
+          this.roomsMap = data;
+          this.roomsList=Object.keys(this.roomsMap);
         });
 
   }
+  getRooms(){
+    this.apiService.getTypeRequest('/user/tic-tac-toe/rooms')
+      .subscribe((res:any)=>{
+        console.log(res,"res from getRooms, should be after enter and leave room")
+        this.webSocketService.emit("updateRoomsDb",res)
+      })
+  }
+  leaveRoom(){
+    this.isInRoom = false;
+    this.unjoin();
+    this.updateUsersMsgs(this.roomId,this.currentUser,`${this.currentUser} leaves room ${this.roomId}.`,"delete");
+    this.webSocketService.emit('leave', {room:this.roomId});
+    this.cachePlayers= [];
+  }
+  enterRoom(id:any){
+    this.isInRoom = true;
+    this.roomId = id;
+    this.webSocketService.emit('join', {room:this.roomId});
+    this.updateUsersMsgs(this.roomId,this.currentUser,`${this.currentUser} enters room ${this.roomId}.`,"add");
+    // this.refreshBoard();
+    // this.refreshWinner();
+  }
+  updateUsersMsgs(roomId:any,user:any,msg:any,addOrDelete:any){
+    let path = `/user/tic-tac-toe/${roomId}/msgs-users`
+    this.apiService.postTypeRequest(path,{
+        user,
+        msg,
+        addOrDelete
+    }).subscribe((res:any)=>{
+      this.getRooms()
+      this.webSocketService.emit('updateRoom',{
+        msgs:res.msgs,
+        usersByRoomId:res.users[roomId],
+        roomsMap:res.users,
+        room:this.roomId
+      });
+    })
+  }
+
   checkUser(username){
     let res = true;
     if(this.cachePlayers.length===0) return false;
@@ -81,21 +135,26 @@ export class TicTacToeComponent{
         user:this.currentUser,
         sign:""
       })
-      this.webSocketService.emit('updatePlayerList', this.cachePlayers);
+      this.webSocketService.emit('updatePlayerList', {
+        cachePlayers:this.cachePlayers,
+        room: this.roomId
+      });
+      if(this.cachePlayers.length===2){
+        this.start()
+      }
     }
   }
   unjoin(){
     this.cachePlayers = this.cachePlayers.filter(data=>{
-      return data.user!=this.currentUser;
+      return data.user!==this.currentUser;
     });
-    this.webSocketService.emit('updatePlayerList', this.cachePlayers);
+    this.webSocketService.emit('updatePlayerList', {
+      cachePlayers:this.cachePlayers,
+      room: this.roomId});
     this.refreshWinner();
     this.refreshBoard();
   }
 
-  checkSocketHandler($event: any) {
-    this.webSocketService.emit('message', 'OMG');
-  }
   refreshBoard(){
     this.webSocketService.emit('updateBoard',{
       board:new Array(9).fill("").map(a=>""),
@@ -103,11 +162,15 @@ export class TicTacToeComponent{
       rows : [0,0,0],
       cols : [0,0,0],
       diag : 0,
-      antiDiag:0
+      antiDiag:0,
+      room: this.roomId,
     });
   }
   refreshWinner(){
-    this.webSocketService.emit('updateWinner',"");
+    this.webSocketService.emit('updateWinner',{
+      winner:"",
+      room: this.roomId,
+    });
   }
   start(){
     this.refreshWinner();
@@ -121,13 +184,16 @@ export class TicTacToeComponent{
       rows : [0,0,0],
       cols : [0,0,0],
       diag : 0,
-      antiDiag:0
+      antiDiag:0,
+      room: this.roomId,
     });
-    this.webSocketService.emit('updatePlayerList',this.cachePlayers);
+    this.webSocketService.emit('updatePlayerList',{
+      cachePlayers:this.cachePlayers,
+      room: this.roomId});
   }
   move(id:number){
     if(this.board[id]!==""){
-      alert("It's taken.")
+      return;
     }else if(this.playerInTurn!==this.currentUser){
       alert("Not your turn.")
     }else if(this.board[id]==="" && this.playerInTurn===this.currentUser){
@@ -172,7 +238,8 @@ export class TicTacToeComponent{
         rows : this.rows,
         cols : this.cols,
         diag : this.diag,
-        antiDiag:this.antiDiag
+        antiDiag:this.antiDiag,
+        room: this.roomId
       });
       if(this.checkWinner(id)){
         this.webSocketService.emit('updateBoard',{
@@ -181,18 +248,24 @@ export class TicTacToeComponent{
           rows : this.rows,
           cols : this.cols,
           diag : this.diag,
-          antiDiag:this.antiDiag
+          antiDiag:this.antiDiag,
+          room: this.roomId
         });
-        this.webSocketService.emit('updateWinner',this.currentUser);
+        this.webSocketService.emit('updateWinner',{
+          winner:this.currentUser,
+          room: this.roomId});
       }else if(!this.board.includes("")){
-        this.webSocketService.emit('updateWinner',"No one ");
+        this.webSocketService.emit('updateWinner',{
+          winner:"No one ",
+          room: this.roomId});
         this.webSocketService.emit('updateBoard',{
           board:this.board,
           playerInTurn:"",
           rows : this.rows,
           cols : this.cols,
           diag : this.diag,
-          antiDiag:this.antiDiag
+          antiDiag:this.antiDiag,
+          room: this.roomId
         });
       }
     }else{
@@ -209,7 +282,12 @@ export class TicTacToeComponent{
         return true;
     }else return false;
   }
+  
+  checkSocketHandler($event: any) {
+    this.webSocketService.emit('message', 'OMG');
+  }
 }
+
 // export class TicTacToeComponent {
 //   player:string;
 //   players:any;

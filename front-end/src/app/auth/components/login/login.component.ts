@@ -11,8 +11,6 @@ import { AuthService } from 'src/app/services/auth.service';
 })
 export class LoginComponent {
   
-  
-
   constructor(public authService: AuthService, 
     private _apiService: ApiService,
     private _router: Router) { }
