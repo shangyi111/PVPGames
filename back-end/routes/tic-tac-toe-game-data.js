@@ -2,66 +2,64 @@ const express = require('express');
 const router = express.Router();
 const con = require('./data').con;
 
-let msgs = {};
-let users = {};
 
-router.get('/rooms',(req,res,next)=>{
-    res.send(users) //database(key:roomId, value:users)
-})
-router.post('/:roomId/msgs-users',(req,res,next)=>{
+router.post('/:roomId/msgs-users/mysql',(req,res,next)=>{
     let roomId = req.params.roomId;
-    let user = req.body.user;
+    let username = req.body.user;
     let msg = req.body.msg;
     let addOrDelete = req.body.addOrDelete;
-    //update msgs database
-    if(msgs[roomId]===undefined){
-        msgs[roomId] = [msg]
-    }else{
-        msgs[roomId].unshift(msg);
-    }
-    if(msgs[roomId].length>10){
-        msgs[roomId] = msgs[roomId].slice(0,10)
-    }
-    //update user database
+    
+    //update msgsByRoomId;
+    let insertMsgByRoomIdSql = `INSERT INTO simpleangular.msgsByRoomId (roomId, msg,createdTime)
+    VALUES ("${roomId}","${msg}",current_timestamp())`
+    let showMsgsByRoomIdSql = `SELECT msg from simpleangular.msgsByRoomId  
+                                WHERE roomId="${roomId}" 
+                                ORDER BY createdTime DESC
+                                LIMIT 0,10`;
+    let msgsResult;
+
+    con.promise().query(insertMsgByRoomIdSql).then(con.query(showMsgsByRoomIdSql,(err,res)=>{
+        msgsResult=res;
+     })
+    )
+    
+   
+    //update userByRoomId
+    let showUsersByRoomIdSql = `SELECT username
+                                   FROM simpleangular.usersByRoomId  
+                                   WHERE roomId = "${roomId}"`;
+    
+    let insertOrDeleteSql;
     if(addOrDelete==="add"){
-        if(users[roomId]===undefined){
-            users[roomId] = [user]
-        }else{
-            let list = users[roomId];
-            if(!list.includes(user)){
-                users[roomId].unshift(user);
-            }
-        }
-        //console.log(users,"add after")
-        res.send({
-            users,
-            msgs:msgs[roomId]
-        });
+        insertOrDeleteSql = `INSERT INTO simpleangular.usersByRoomId (roomId, username,createdTime)
+                             VALUES ("${roomId}","${username}",current_timestamp())`;
     }else if(addOrDelete==="delete"){
-        if(users[roomId]!==undefined){
-            //console.log(users,"delete before")
-            let temp = users[roomId].filter((element)=>{
-                return element!==user
-            })
-            users[roomId]=temp;
-            //console.log("in case of empty rooms",users[roomId])
-            if(users[roomId].length===0){
-                delete users[roomId];
-                res.send({
-                    users,
-                    msgs:msgs[roomId],
-                });
-            }else{
-                //console.log(users,"delete after")
-                res.send({
-                    users,
-                    msgs:msgs[roomId],
-                });
-            }
-            
-        }
+        insertOrDeleteSql = `DELETE FROM simpleangular.usersByRoomId 
+                             WHERE username = "${username}";`
     }
+    con.promise().query(insertOrDeleteSql).then(
+        con.promise().query(showUsersByRoomIdSql).then(
+            (showUsersResult)=>{
+                console.log(`add or delete is ${addOrDelete}`,showUsersResult[0],msgsResult)
+                res.send({
+                    users:showUsersResult[0],
+                    msgs:msgsResult
+                })
+            }
+        )
+    )
 })
+router.get('/rooms/mysql',(req,res,next)=>{
+    let showUserByRoomIdSql = `SELECT roomId, 
+                               COUNT(username) as UserCount from simpleangular.usersByRoomId  
+                               GROUP BY roomId`;
+       
+    con.query(showUserByRoomIdSql,(err,result)=>{
+        res.send(result) //database(key:roomId, value:users)
+    }) 
+})
+
+
 
 // router.post('/player/add',(req,res,next)=>{
 //     if(Object.keys(players).length>=2){

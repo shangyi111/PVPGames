@@ -1,45 +1,49 @@
-<div [hidden]="this.isInRoom" id="joinRoom" >
+<div [hidden]="this.isInRoom" >
     
     <form #joinRoomForm="ngForm" 
-        (ngSubmit)="enterRoom(joinRoomForm.value.roomId)"
-        style="padding: 40px;">
+        (ngSubmit)="enterRoom(joinRoomForm.value.roomName);joinRoomForm.reset()"
+        style="padding: 10px;">
         <div class="mb-3">
-        <label for="inputRoom" class="form-label">Enter Room Number</label>
+        <label for="inputRoom" class="form-label">Enter Room Name</label>
         <input ngModel  
                 type="text" 
-                name = "roomId" 
+                name = "roomName" 
                 required 
-                #roomId="ngModel"
-                class="form-control col-lg-2 mx-auto" 
+                #roomName="ngModel"
+                class="form-control col-lg-3 mx-auto" 
                 id="inputRoom">
         </div>
-        <p>{{roomId.value}}</p>
-        <div class="alert alert-danger" role="alert" *ngIf= "roomId.pristine && roomId.touched">
-            Please enter your roomId.
+        <p>{{roomName.value}}</p>
+        <div>
+            <small class="alert alert-info col-lg-3 mx-auto" role="alert" *ngIf= "roomName.pristine && roomName.touched">
+                Please enter your room name.
+            </small>
         </div>
-        <button [disabled]="roomId.pristine" type="submit" class="btn btn-primary">Join Room</button>
+        
+        <button [disabled]="roomName.pristine" type="submit" class="btn btn-primary">Join Room</button>
     </form>
     
-    <div class="row d-flex justify-content-center">
-        <table *ngIf="this.roomsMap!==undefined && this.roomsList.length>0 " 
-            class="table-lg table-hover">
+    <div class="row d-flex justify-content-center" style="margin-top:40px">
+        <table *ngIf="this.roomsMap!==undefined && this.roomsMap.length>0 " 
+            class="table-hover" style="width: 60%">
          <!-- <caption>List of Rooms In Use</caption> -->
          <thead>
            <tr>
-             <th scope="col-3">Room Id</th>
-             <th scope="col-3">User Count</th>
-             <th scope="col-3"></th>
+             <th class="th-lg" scope="col">Room Id</th>
+             <th class="th-lg" scope="col">User Count</th>
+             <th class="th-lg" scope="col" ></th>
            </tr>
          </thead>
          <tbody>
-           <tr *ngFor="for let room of this.roomsList">
-                <th scope="row">{{room}}</th>
-                <td>{{this.roomsMap[room].length}}</td>
-                <td><button class="btn btn-light" (click)="enterRoom(room)">Join</button></td>
+           <tr *ngFor="for let room of this.roomsMap">
+                <th scope="row">{{room.roomId}}</th>
+                <td>{{room.UserCount}}</td>
+                <td><button class="btn btn-light" (click)="enterRoom(room.roomId)">Join</button></td>
            </tr>
          </tbody>
      </table>
     </div>  
+   
 </div>
 
 <div class="container " [hidden]="!this.isInRoom">
@@ -48,15 +52,15 @@
             <button class="list-group-item list-group-item-action active" (click)="leaveRoom()">Leave Room</button>
             <li class="list-group-item list-group-item-info">Users In Room</li>
             <li class="list-group-item"*ngFor = "let user of this.usersByRoomId">
-                {{user}}
+                {{user.username}}
             </li>
             <li class="list-group-item list-group-item-info">Room Anouncements:</li>
             <li class="list-group-item" *ngFor="let msg of this.msgs; let i = index;">
                 <div  style="font-weight: bold;"  class="fadeIn"*ngIf="i===0;else otherMsgs">
-                    {{msg}}
+                    {{msg.msg}}
                 </div>
                 <ng-template #otherMsgs>
-                    {{msg}} 
+                    {{msg.msg}} 
                 </ng-template>
                 
             </li>    

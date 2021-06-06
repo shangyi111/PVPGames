@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { Observable } from 'rxjs';
 import { ApiService } from 'src/app/services/api.service';
 import { AuthService } from 'src/app/services/auth.service';
+import { RoomService } from 'src/app/services/room.service';
 import { WebSocketService } from 'src/app/services/web-socket.service';
 
 
@@ -37,12 +38,14 @@ export class TicTacToeComponent{
 
   constructor(private webSocketService:WebSocketService,
               private apiService:ApiService,
-              private authService:AuthService){
+              private authService:AuthService,
+              private roomService:RoomService){
     this.currentUser = this.authService.getUserDataFromLocalStorage('userData').username;
   
   }
   ngOnInit() {
     this.getRooms();
+    // this.roomService.gFakeUsers();
     this.webSocketService
         .listen('updatePlayerList')
         .subscribe((data:any) => {
@@ -66,41 +69,18 @@ export class TicTacToeComponent{
     this.webSocketService
         .listen('updateRoom')//boardcast to only certain rooms
         .subscribe((data:any) => {
-          this.usersByRoomId = data.usersByRoomId;
+          this.usersByRoomId = data.users;
           this.msgs = data.msgs;
         });
       this.webSocketService
         .listen('updateRoomsDb')//boardcast to all rooms
         .subscribe((data:any) => {
           this.roomsMap = data;
-          this.roomsList=Object.keys(this.roomsMap);
         });
 
   }
-  getRooms(){
-    this.apiService.getTypeRequest('/user/tic-tac-toe/rooms')
-      .subscribe((res:any)=>{
-        console.log(res,"res from getRooms, should be after enter and leave room")
-        this.webSocketService.emit("updateRoomsDb",res)
-      })
-  }
-  leaveRoom(){
-    this.isInRoom = false;
-    this.unjoin();
-    this.updateUsersMsgs(this.roomId,this.currentUser,`${this.currentUser} leaves room ${this.roomId}.`,"delete");
-    this.webSocketService.emit('leave', {room:this.roomId});
-    this.cachePlayers= [];
-  }
-  enterRoom(id:any){
-    this.isInRoom = true;
-    this.roomId = id;
-    this.webSocketService.emit('join', {room:this.roomId});
-    this.updateUsersMsgs(this.roomId,this.currentUser,`${this.currentUser} enters room ${this.roomId}.`,"add");
-    // this.refreshBoard();
-    // this.refreshWinner();
-  }
-  updateUsersMsgs(roomId:any,user:any,msg:any,addOrDelete:any){
-    let path = `/user/tic-tac-toe/${roomId}/msgs-users`
+  updateUsersMsgsMySql(roomId:any,user:any,msg:any,addOrDelete:any){
+    let path = `/user/tic-tac-toe/${roomId}/msgs-users/mysql`
     this.apiService.postTypeRequest(path,{
         user,
         msg,
@@ -109,13 +89,34 @@ export class TicTacToeComponent{
       this.getRooms()
       this.webSocketService.emit('updateRoom',{
         msgs:res.msgs,
-        usersByRoomId:res.users[roomId],
-        roomsMap:res.users,
+        // usersByRoomId:res.users[roomId],
+        users:res.users,
         room:this.roomId
       });
     })
   }
-
+  getRooms(){
+    this.apiService.getTypeRequest('/user/tic-tac-toe/rooms/mysql')
+      .subscribe((res:any)=>{
+        this.webSocketService.emit("updateRoomsDb",res)
+      })
+  }
+  leaveRoom(){
+    this.isInRoom = false;
+    this.unjoin();
+    this.updateUsersMsgsMySql(this.roomId,this.currentUser,`${this.currentUser} leaves room ${this.roomId}.`,"delete");
+    this.webSocketService.emit('leave', {room:this.roomId});
+    this.cachePlayers= [];
+  }
+  enterRoom(id:any){
+    this.isInRoom = true;
+    this.roomId = id;
+    this.webSocketService.emit('join', {room:this.roomId});
+    this.updateUsersMsgsMySql(this.roomId,this.currentUser,`${this.currentUser} enters room ${this.roomId}.`,"add");
+    // this.refreshBoard();
+    // this.refreshWinner();
+  }
+  
   checkUser(username){
     let res = true;
     if(this.cachePlayers.length===0) return false;
