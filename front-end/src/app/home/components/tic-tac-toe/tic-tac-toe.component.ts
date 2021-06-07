@@ -38,8 +38,7 @@ export class TicTacToeComponent{
 
   constructor(private webSocketService:WebSocketService,
               private apiService:ApiService,
-              private authService:AuthService,
-              private roomService:RoomService){
+              private authService:AuthService){
     this.currentUser = this.authService.getUserDataFromLocalStorage('userData').username;
   
   }

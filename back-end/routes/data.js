@@ -6,7 +6,8 @@ const con = mysql.createConnection({
     host: "localhost",
     user: "root",
     password: "Tr@vel2017",
-    database: "simpleangular"
+    database: "simpleangular",
+    multipleStatements: true
 })
 con.connect(console.log("connecting to mysql"))
 
