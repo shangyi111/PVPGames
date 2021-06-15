@@ -21,6 +21,9 @@ export class WebSocketService {
   }
 
   emit(eventName: string,data:any) {
+    if (eventName === 'updatePlayerList') {
+      console.log(data);
+    }
     this.socket.emit(eventName, data);
   }
   

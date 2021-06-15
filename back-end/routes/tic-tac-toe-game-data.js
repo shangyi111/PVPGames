@@ -4,19 +4,17 @@ const con = require('./data').con;
 
 let msgsResult;
 let showUsersResult;
-const updateMsg= (roomId,msg)=>{
+const updateMsg= async (roomId,msg)=>{
     let insertMsgByRoomIdSql = `INSERT INTO simpleangular.msgsByRoomId (roomId, msg,createdTime)
                                 VALUES ("${roomId}","${msg}",current_timestamp())`
     let showMsgsByRoomIdSql = `SELECT msg from simpleangular.msgsByRoomId  
                                 WHERE roomId="${roomId}" 
                                 ORDER BY createdTime DESC
                                 LIMIT 0,10`;
-    return con.promise().query(insertMsgByRoomIdSql)
-            .then(()=>{
-                   return con.promise().query(showMsgsByRoomIdSql)
-                }) 
+    await con.promise().query(insertMsgByRoomIdSql);
+    return await con.promise().query(showMsgsByRoomIdSql); 
 }
-const updateUser=(roomId,username,addOrDelete)=>{
+const updateUser=async (roomId,username,addOrDelete)=>{
     let showUsersByRoomIdSql = `SELECT username
                                    FROM simpleangular.usersByRoomId  
                                    WHERE roomId = "${roomId}"`;
@@ -29,34 +27,22 @@ const updateUser=(roomId,username,addOrDelete)=>{
         insertOrDeleteSql = `DELETE FROM simpleangular.usersByRoomId 
                              WHERE username = "${username}";`
     }
-    return con.promise().query(`${insertOrDeleteSql}`)
-                .then(()=>{
-                        return con.promise().query(`${showUsersByRoomIdSql}`)
-                    })
+    await con.promise().query(`${insertOrDeleteSql}`);
+    return await con.promise().query(`${showUsersByRoomIdSql}`);
     
 }
-router.post('/:roomId/msgs-users/mysql', (req,res,next)=>{
+router.post('/:roomId/msgs-users/mysql', async (req,res,next)=>{
     let roomId = req.params.roomId;
     let username = req.body.user;
     let msg = req.body.msg;
     let addOrDelete = req.body.addOrDelete;
     
-    updateMsg(roomId,msg)
-        .then(rows=>{
-            msgsResult = rows[0];
-            return updateUser(roomId,username,addOrDelete)
-        })
-        .then(rows=>{
-            showUsersResult = rows[0];
-        })
-        .then(
-            ()=>{
-                res.send({
-                    users:showUsersResult,
-                    msgs:msgsResult 
-                })
-            }
-        )
+    msgsResult = await updateMsg(roomId,msg);
+    showUsersResult = await updateUser(roomId,username,addOrDelete);
+    res.send({
+        users:showUsersResult[0],
+        msgs:msgsResult[0] 
+    })
 })
 router.get('/rooms/mysql',(req,res,next)=>{
     let showUserByRoomIdSql = `SELECT roomId, 

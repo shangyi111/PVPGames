@@ -9,48 +9,22 @@ export class RoomService {
 
   constructor(private apiService:ApiService,
               private webSocketService:WebSocketService) { }
-  gFakeUsers(){
-    let fakeRoomIds=["Hello Kitty","Normal","Loving Cats","Stress Club","Master One","Losers"];
-    let fakeNameIds=[0,1,2,3,4,5]
-    
-    for(let fakeRoomId of fakeRoomIds){
-      setTimeout(()=>{
-        for(let fakeNameId of fakeNameIds){
-          setTimeout(()=>{
-            this.enterRoom(fakeRoomId,fakeNameId);
-          },3000)
-        }
-      },3000)
-    }
-    
-    for(let fakeRoomId of fakeRoomIds){
-      setTimeout(()=>{
-        for(let fakeNameId of fakeNameIds){
-          setTimeout(()=>{
-            this.leaveRoom(fakeRoomId,fakeNameId);
-          },3000)
-        }
-      },3000)
-    }
-  }
   getRooms(){
-    this.apiService.getTypeRequest('/user/tic-tac-toe/rooms')
+    this.apiService.getTypeRequest('/user/tic-tac-toe/rooms/mysql')
       .subscribe((res:any)=>{
         this.webSocketService.emit("updateRoomsDb",res)
       })
   }
   leaveRoom(roomId,user){
-    this.updateUsersMsgs(roomId,user,`${user} leaves room ${roomId}.`,"delete");
+    this.updateUsersMsgsMySql(roomId,user,`${user} leaves room ${roomId}.`,"delete");
     this.webSocketService.emit('leave', {room:roomId});
   }
   enterRoom(roomId,user){
-    this.webSocketService.emit('join', {roomId});
-    this.updateUsersMsgs(roomId,user,`${user} enters room ${roomId}.`,"add");
-    // this.refreshBoard();
-    // this.refreshWinner();
+    this.webSocketService.emit('join', {room:roomId});
+    this.updateUsersMsgsMySql(roomId,user,`${user} enters room ${roomId}.`,"add");
   }
-  updateUsersMsgs(roomId:any,user:any,msg:any,addOrDelete:any){
-    let path = `/user/tic-tac-toe/${roomId}/msgs-users`
+  updateUsersMsgsMySql(roomId:any,user:any,msg:any,addOrDelete:any){
+    let path = `/user/tic-tac-toe/${roomId}/msgs-users/mysql`
     this.apiService.postTypeRequest(path,{
         user,
         msg,
@@ -59,11 +33,11 @@ export class RoomService {
       this.getRooms()
       this.webSocketService.emit('updateRoom',{
         msgs:res.msgs,
-        usersByRoomId:res.users[roomId],
-        roomsMap:res.users,
+        users:res.users,
         room:roomId
       });
     })
   }
+              
 
 } 

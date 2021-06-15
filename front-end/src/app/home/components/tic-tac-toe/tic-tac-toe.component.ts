@@ -1,7 +1,6 @@
 import { Component } from '@angular/core';
 import { NgForm } from '@angular/forms';
 import { Router } from '@angular/router';
-import { Observable } from 'rxjs';
 import { ApiService } from 'src/app/services/api.service';
 import { AuthService } from 'src/app/services/auth.service';
 import { RoomService } from 'src/app/services/room.service';
@@ -37,18 +36,20 @@ export class TicTacToeComponent{
 
 
   constructor(private webSocketService:WebSocketService,
-              private apiService:ApiService,
-              private authService:AuthService){
+              private authService:AuthService,
+              private roomService:RoomService){
     this.currentUser = this.authService.getUserDataFromLocalStorage('userData').username;
-  
   }
   ngOnInit() {
-    this.getRooms();
-    // this.roomService.gFakeUsers();
+    this.roomService.getRooms();
     this.webSocketService
         .listen('updatePlayerList')
         .subscribe((data:any) => {
-          this.cachePlayers = data.cachePlayers;
+          if (data.room === this.roomId) {
+            this.cachePlayers = data.cachePlayers;
+          } else {
+            this.cachePlayers = [];
+          }
         });
     this.webSocketService
         .listen('updateBoard')
@@ -78,42 +79,24 @@ export class TicTacToeComponent{
         });
 
   }
-  updateUsersMsgsMySql(roomId:any,user:any,msg:any,addOrDelete:any){
-    let path = `/user/tic-tac-toe/${roomId}/msgs-users/mysql`
-    this.apiService.postTypeRequest(path,{
-        user,
-        msg,
-        addOrDelete
-    }).subscribe((res:any)=>{
-      this.getRooms()
-      this.webSocketService.emit('updateRoom',{
-        msgs:res.msgs,
-        // usersByRoomId:res.users[roomId],
-        users:res.users,
-        room:this.roomId
-      });
-    })
-  }
-  getRooms(){
-    this.apiService.getTypeRequest('/user/tic-tac-toe/rooms/mysql')
-      .subscribe((res:any)=>{
-        this.webSocketService.emit("updateRoomsDb",res)
-      })
-  }
+
   leaveRoom(){
     this.isInRoom = false;
-    this.unjoin();
-    this.updateUsersMsgsMySql(this.roomId,this.currentUser,`${this.currentUser} leaves room ${this.roomId}.`,"delete");
-    this.webSocketService.emit('leave', {room:this.roomId});
-    this.cachePlayers= [];
+    if(this.checkUser(this.currentUser)){
+      this.unjoin();
+    }
+    this.roomService.leaveRoom(this.roomId, this.currentUser);
+    this.resetRoomState();
+  }
+  resetRoomState() {
+    this.roomId = undefined;
   }
   enterRoom(id:any){
+    console.log("enteredRoom",this.cachePlayers)
     this.isInRoom = true;
     this.roomId = id;
-    this.webSocketService.emit('join', {room:this.roomId});
-    this.updateUsersMsgsMySql(this.roomId,this.currentUser,`${this.currentUser} enters room ${this.roomId}.`,"add");
-    // this.refreshBoard();
-    // this.refreshWinner();
+    this.roomService.enterRoom(this.roomId,this.currentUser)
+
   }
   
   checkUser(username){
@@ -208,8 +191,6 @@ export class TicTacToeComponent{
         this.playerInTurn = this.cachePlayers[0].user;
       }
       this.board[id]=currentSign;
-
-      //update winning criterias(row,col,dia and antiDiag)
       if(curRow===curCol){
         if(currentSign==="X"){
           this.diag++;
@@ -287,108 +268,3 @@ export class TicTacToeComponent{
     this.webSocketService.emit('message', 'OMG');
   }
 }
-
-// export class TicTacToeComponent {
-//   player:string;
-//   players:any;
-//   playersList:any;
-//   isGame:boolean;
-//   db:any;
-//   currentUser:string;
-//   isTurn:any;
-//   winner:any;
-//   constructor(private apiService:ApiService,
-//               private authService: AuthService) { 
-//     this.db = new Array(9).fill("").map(a=>"");
-//     this.currentUser = this.authService.getUserDataFromLocalStorage('userData').username;
-//   }
-//   join(){
-//     this.apiService.postTypeRequest('/user/tic-tac-toe/player/add',{
-//       "name":this.currentUser,
-//       "isTurn":false
-//     }).subscribe((res:any)=>{
-//       console.log(res)
-//       if(res[this.currentUser]){
-//         this.players = res;
-//         this.playersList = Object.keys(res);
-//         alert("Joined successfully")
-//       }else{
-//         alert("already joined")
-//       }
-//     })  
-//   }
-//   unjoin(){
-//     this.apiService.postTypeRequest('/user/tic-tac-toe/player/delete',{
-//       "name":this.currentUser
-//     }).subscribe((res:any)=>{
-//       if(res.code===0){
-//         alert('Unjoined already, no need to click again');
-//       }else if(res.code===1){
-//         alert('Unjoined.');
-//         this.players = res;
-//         this.playersList = Object.keys(res);
-//       }
-//     })  
-//   }
-//   move(id:number){ 
-//     if(!this.isGame) alert("Please click start game")
-//     else if(this.isTurn.username!==this.currentUser){
-//       alert('Not your turn');
-//     }else{
-//       //get most updated board data and players data
-//       this.apiService.getTypeRequest('/user/tic-tac-toe/player/board').subscribe((res:any)=>{
-//           this.db = res.board;
-//           this.players = res.players;
-//           this.playersList = Object.keys(res);
-//       })
-//       //retrieve sign of currentPlayer
-//       if(this.players[this.currentUser].sign===undefined){
-//         this.apiService.postTypeRequest('/user/tic-tac-toe/player/updateSign',{
-//           username:this.currentUser
-//         }).subscribe((res:any)=>{
-//           this.players = res.players;
-//           this.playersList = Object.keys(res);
-//         })
-//       }
-//       if(this.db[id]===undefined){
-//         this.apiService.postTypeRequest('/user/tic-tac-toe/player/move',{
-//           id,
-//           username:this.currentUser
-//         }).subscribe((res:any)=>{
-//           this.db = res.board,
-//           this.players = res.players,
-//           this.playersList = Object.keys(res),
-//           this.isTurn = res.isTurn,
-//           this.isGame,
-//           this.winner
-//         })
-//       }
-//       //position is taken 
-//       //position is open
-//     }
-   
-    
-//   }
-//   start(){
-//     //checkPlayers===2
-//     if(!this.playersList.length || this.playersList.length<2){
-//       alert('need one more player to join')
-//     }else{
-//       //updateCurrentUserSign
-//       this.apiService.postTypeRequest('/user/tic-tac-toe/player/start',{
-//         name:this.currentUser
-//       }).subscribe((res:any)=>{
-//         console.log(res);
-//         this.isGame = res.isGame;
-//         this.db = res.board;
-//         this.players = res.players;
-//         this.isTurn = res.isTurn;
-//       })
-//       //updateCurrentPlayerOfTurn
-//       //ClearBoard
-//     }
-//   }
-  
- 
-
-// }
